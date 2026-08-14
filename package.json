@@ -1,6 +1,6 @@
 {
   "name": "dripfiles",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Upload and download DripFiles transfers directly from your terminal.",
   "type": "module",
   "bin": {

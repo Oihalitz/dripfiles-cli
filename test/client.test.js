@@ -4,7 +4,13 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
-import { DripFilesClient, DripFilesError } from '../src/client.js';
+import { DripFilesClient, DripFilesError, VERSION } from '../src/client.js';
+
+const packageMetadata = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+
+test('uses the package version as the CLI version', () => {
+  assert.equal(VERSION, packageMetadata.version);
+});
 
 test('uploads in chunks, completes, and waits until the share link is ready', async (t) => {
   const requests = [];

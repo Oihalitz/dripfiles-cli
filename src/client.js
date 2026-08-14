@@ -1,11 +1,14 @@
 import { createReadStream, createWriteStream } from 'node:fs';
 import { access, mkdir, rename, rm, stat } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { basename, dirname, join, resolve } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { randomBytes } from 'node:crypto';
 
-export const VERSION = '0.1.0';
+const packageMetadata = createRequire(import.meta.url)('../package.json');
+
+export const VERSION = packageMetadata.version;
 export const DEFAULT_BASE_URL = 'https://dripfiles.com';
 
 const DEFAULT_REQUEST_TIMEOUT = 5 * 60 * 1000;

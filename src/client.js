@@ -29,7 +29,7 @@ export class DripFilesClient {
     this.readyTimeout = options.readyTimeout ?? DEFAULT_READY_TIMEOUT;
 
     if (typeof this.fetch !== 'function') {
-      throw new DripFilesError('Esta versión de Node.js no incluye fetch. Usa Node.js 20 o posterior.');
+      throw new DripFilesError('This Node.js version does not include fetch. Use Node.js 22 or later.');
     }
   }
 
@@ -53,7 +53,7 @@ export class DripFilesClient {
     const token = session.upload_token;
     const remoteFiles = session.files;
     if (!uploadId || (!this.apiKey && !token) || !Array.isArray(remoteFiles) || remoteFiles.length !== files.length) {
-      throw new DripFilesError('DripFiles devolvió una sesión de subida incompleta.', { details: session });
+      throw new DripFilesError('DripFiles returned an incomplete upload session.', { details: session });
     }
 
     const chunkSize = positiveInteger(session.chunk_size, 1024 * 1024);
@@ -63,7 +63,7 @@ export class DripFilesClient {
       const file = files[index];
       const fileUid = remoteFiles[index]?.file_uid;
       if (!fileUid) {
-        throw new DripFilesError(`DripFiles no devolvió un identificador para ${file.name}.`);
+        throw new DripFilesError(`DripFiles did not return an identifier for ${file.name}.`);
       }
 
       if (file.size === 0) {
@@ -131,7 +131,7 @@ export class DripFilesClient {
 
   async me(options = {}) {
     if (!this.apiKey) {
-      throw new DripFilesError('No hay ninguna API key configurada. Usa "dripfiles auth login".');
+      throw new DripFilesError('No API key is configured. Run "dripfiles auth login".');
     }
     return this.#requestJson(this.#apiUrl('/api/v1/me'), {
       method: 'GET',
@@ -172,10 +172,10 @@ export class DripFilesClient {
     }
 
     if (!response.ok) {
-      throw await responseError(response, `No se pudo descargar ${url}`);
+      throw await responseError(response, `Could not download ${url}`);
     }
     if (!response.body) {
-      throw new DripFilesError('DripFiles no devolvió contenido para descargar.');
+      throw new DripFilesError('DripFiles returned no downloadable content.');
     }
 
     const disposition = response.headers.get('content-disposition');
@@ -213,7 +213,7 @@ export class DripFilesClient {
     } catch (error) {
       await rm(part, { force: true }).catch(() => {});
       if (error?.code === 'EEXIST') {
-        throw new DripFilesError(`Ya existe: ${target}. Usa --force para sobrescribirlo.`, { cause: error });
+        throw new DripFilesError(`Already exists: ${target}. Use --force to overwrite it.`, { cause: error });
       }
       throw error;
     }
@@ -226,14 +226,14 @@ export class DripFilesClient {
     if (/^https?:\/\//i.test(value)) {
       const url = new URL(value);
       if (!['http:', 'https:'].includes(url.protocol)) {
-        throw new DripFilesError('La URL debe usar HTTP o HTTPS.');
+        throw new DripFilesError('The URL must use HTTP or HTTPS.');
       }
       return url.href;
     }
     if (/^[A-Za-z0-9_-]+$/.test(value)) {
       return new URL(`/${value}`, this.baseUrl).href;
     }
-    throw new DripFilesError(`URL o identificador de DripFiles no válido: ${value}`);
+    throw new DripFilesError(`Invalid DripFiles URL or ID: ${value}`);
   }
 
   async #uploadChunk({ url, uploadsPath, uploadId, token, file, fileUid, start, end, signal }) {
@@ -263,7 +263,7 @@ export class DripFilesClient {
           await parseJsonResponse(response);
           return;
         }
-        const error = await responseError(response, `No se pudo subir ${file.name}`);
+        const error = await responseError(response, `Could not upload ${file.name}`);
         if (!isRetryableStatus(response.status) || attempt === 3) throw error;
         lastError = error;
       } catch (error) {
@@ -291,17 +291,17 @@ export class DripFilesClient {
       onStatus?.(status.status);
       if (status.status === 'ready') return status;
       if (status.status === 'failed' || status.status === 'error') {
-        throw new DripFilesError(status.status_message ?? 'DripFiles no pudo finalizar la subida.', { details: status });
+        throw new DripFilesError(status.status_message ?? 'DripFiles could not finalize the upload.', { details: status });
       }
       await delay(500, signal);
     }
 
-    throw new DripFilesError('La subida terminó, pero DripFiles tardó demasiado en preparar el enlace.');
+    throw new DripFilesError('The upload finished, but DripFiles took too long to prepare the link.');
   }
 
   async #requestJson(url, init) {
     const response = await this.#fetch(url, init);
-    if (!response.ok) throw await responseError(response, 'La petición a DripFiles ha fallado');
+    if (!response.ok) throw await responseError(response, 'The DripFiles request failed');
     return parseJsonResponse(response);
   }
 
@@ -312,10 +312,10 @@ export class DripFilesClient {
     } catch (error) {
       if (init.signal?.aborted) throw init.signal.reason ?? error;
       if (timeout.timedOut()) {
-        throw new DripFilesError('La conexión con DripFiles agotó el tiempo de espera.', { cause: error });
+        throw new DripFilesError('The connection to DripFiles timed out.', { cause: error });
       }
       if (error instanceof DripFilesError) throw error;
-      throw new DripFilesError(`No se pudo conectar con DripFiles: ${error.message}`, { cause: error });
+      throw new DripFilesError(`Could not connect to DripFiles: ${error.message}`, { cause: error });
     } finally {
       timeout.cleanup();
     }
@@ -334,7 +334,7 @@ export class DripFilesClient {
 async function inspectFiles(inputPaths) {
   const paths = Array.isArray(inputPaths) ? inputPaths : [inputPaths];
   if (paths.length === 0 || paths.some((value) => !value)) {
-    throw new DripFilesError('Indica al menos un archivo para subir.');
+    throw new DripFilesError('Provide at least one file to upload.');
   }
 
   return Promise.all(paths.map(async (input) => {
@@ -343,11 +343,11 @@ async function inspectFiles(inputPaths) {
     try {
       info = await stat(path);
     } catch (error) {
-      if (error?.code === 'ENOENT') throw new DripFilesError(`No existe: ${path}`, { cause: error });
+      if (error?.code === 'ENOENT') throw new DripFilesError(`Not found: ${path}`, { cause: error });
       throw error;
     }
-    if (!info.isFile()) throw new DripFilesError(`No es un archivo: ${path}`);
-    if (info.size === 0) throw new DripFilesError(`DripFiles no admite archivos vacíos: ${path}`);
+    if (!info.isFile()) throw new DripFilesError(`Not a file: ${path}`);
+    if (info.size === 0) throw new DripFilesError(`DripFiles does not accept empty files: ${path}`);
     return { path, name: basename(path), size: info.size };
   }));
 }
@@ -406,7 +406,7 @@ async function assertMissing(path) {
     if (error?.code === 'ENOENT') return;
     throw error;
   }
-  throw new DripFilesError(`Ya existe: ${path}. Usa --force para sobrescribirlo.`);
+  throw new DripFilesError(`Already exists: ${path}. Use --force to overwrite it.`);
 }
 
 function filenameFromDisposition(value) {
@@ -440,8 +440,8 @@ function safeFilename(value) {
 
 function normalizeBaseUrl(value) {
   let url;
-  try { url = new URL(value); } catch { throw new DripFilesError(`URL base no válida: ${value}`); }
-  if (!['http:', 'https:'].includes(url.protocol)) throw new DripFilesError('La URL base debe usar HTTP o HTTPS.');
+  try { url = new URL(value); } catch { throw new DripFilesError(`Invalid base URL: ${value}`); }
+  if (!['http:', 'https:'].includes(url.protocol)) throw new DripFilesError('The base URL must use HTTP or HTTPS.');
   return url.href.replace(/\/+$/, '');
 }
 
@@ -457,7 +457,7 @@ async function parseJsonResponse(response) {
     return data;
   } catch (error) {
     if (error instanceof DripFilesError) throw error;
-    throw new DripFilesError('DripFiles devolvió una respuesta que no es JSON válido.', { status: response.status, details: text });
+    throw new DripFilesError('DripFiles returned an invalid JSON response.', { status: response.status, details: text });
   }
 }
 
@@ -504,7 +504,7 @@ function timeoutSignal(parentSignal, milliseconds) {
 
 function delay(milliseconds, signal) {
   return new Promise((resolveDelay, reject) => {
-    if (signal?.aborted) return reject(signal.reason ?? new Error('Operación cancelada.'));
+    if (signal?.aborted) return reject(signal.reason ?? new Error('Operation canceled.'));
     const timer = setTimeout(() => {
       signal?.removeEventListener('abort', abort);
       resolveDelay();
@@ -512,7 +512,7 @@ function delay(milliseconds, signal) {
     const abort = () => {
       clearTimeout(timer);
       signal?.removeEventListener('abort', abort);
-      reject(signal.reason ?? new Error('Operación cancelada.'));
+      reject(signal.reason ?? new Error('Operation canceled.'));
     };
     signal?.addEventListener('abort', abort, { once: true });
   });

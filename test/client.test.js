@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { DripFilesClient, DripFilesError } from '../src/client.js';
 
-test('sube en chunks, finaliza y espera hasta que el enlace esté listo', async (t) => {
+test('uploads in chunks, completes, and waits until the share link is ready', async (t) => {
   const requests = [];
   const server = createServer(async (request, response) => {
     const body = await readBody(request);
@@ -67,9 +67,9 @@ test('sube en chunks, finaliza y espera hasta que el enlace esté listo', async 
   ]);
 });
 
-test('descarga con nombre UTF-8 y reintenta servidores antiguos con UA de curl', async (t) => {
+test('downloads a UTF-8 filename and retries older servers with a curl user agent', async (t) => {
   let calls = 0;
-  const content = Buffer.from('hola mundo\n');
+  const content = Buffer.from('hello world\n');
   const server = createServer((request, response) => {
     calls += 1;
     if (!request.headers['user-agent'].startsWith('curl/')) {
@@ -79,7 +79,7 @@ test('descarga con nombre UTF-8 y reintenta servidores antiguos con UA de curl',
     response.writeHead(200, {
       'content-type': 'text/plain',
       'content-length': String(content.length),
-      'content-disposition': "attachment; filename*=UTF-8''informe%20final%3F.txt",
+      'content-disposition': "attachment; filename*=UTF-8''r%C3%A9sum%C3%A9%20final%3F.txt",
     });
     response.end(content);
   });
@@ -95,22 +95,22 @@ test('descarga con nombre UTF-8 y reintenta servidores antiguos con UA de curl',
   });
 
   assert.equal(calls, 2);
-  assert.equal(result.path, join(directory, 'informe final_.txt'));
-  assert.equal(await readFile(result.path, 'utf8'), 'hola mundo\n');
+  assert.equal(result.path, join(directory, 'résumé final_.txt'));
+  assert.equal(await readFile(result.path, 'utf8'), 'hello world\n');
   assert.equal(progress.at(-1), content.length);
 
   await assert.rejects(
     () => client.download(`${baseUrl(server)}/share`, { output: directory }),
-    (error) => error instanceof DripFilesError && /Ya existe/.test(error.message),
+    (error) => error instanceof DripFilesError && /Already exists/.test(error.message),
   );
 });
 
-test('convierte un ID en una URL del servidor configurado', () => {
+test('resolves an ID against the configured server URL', () => {
   const client = new DripFilesClient({ baseUrl: 'https://files.example.test/', apiKey: '' });
   assert.equal(client.resolveDownloadUrl('AbC_123'), 'https://files.example.test/AbC_123');
 });
 
-test('valida y usa una API key propia en todos los pasos de subida', async (t) => {
+test('validates and uses a personal API key throughout an upload', async (t) => {
   const seen = [];
   const server = createServer(async (request, response) => {
     await readBody(request);

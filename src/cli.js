@@ -3,40 +3,40 @@ import { resolve, sep } from 'node:path';
 import { DEFAULT_BASE_URL, DripFilesClient, DripFilesError, VERSION } from './client.js';
 import { clearConfig, configPath, readConfig, saveConfig } from './config.js';
 
-const HELP = `DripFiles desde la terminal
+const HELP = `DripFiles from your terminal
 
-Uso:
-  dripfiles <archivo> [más archivos]       Sube y devuelve un enlace
-  dripfiles <URL>                          Descarga en el directorio actual
-  dripfiles upload <archivo...>            Sube uno o varios archivos
-  dripfiles download <URL|ID>              Descarga un enlace de DripFiles
-  dripfiles auth login                     Guarda y valida tu API key
-  dripfiles auth status                    Muestra la cuenta conectada
-  dripfiles auth logout                    Elimina la API key guardada
+Usage:
+  dripfiles <file> [more files]            Upload and return a share link
+  dripfiles <URL>                          Download to the current directory
+  dripfiles upload <file...>               Upload one or more files
+  dripfiles download <URL|ID>              Download a DripFiles transfer
+  dripfiles auth login                     Save and validate your API key
+  dripfiles auth status                    Show the connected account
+  dripfiles auth logout                    Remove the saved API key
 
-Opciones:
-  -m, --message <texto>    Mensaje de la transferencia
-  -o, --output <ruta>      Archivo o directorio de destino
-  -f, --force              Sobrescribe el archivo de destino
-      --json               Salida JSON para scripts
-  -q, --quiet              No muestra estado ni progreso
-      --no-progress        No muestra la barra de progreso
-      --base-url <URL>     Servidor DripFiles (por defecto: ${DEFAULT_BASE_URL})
-  -h, --help               Muestra esta ayuda
-  -v, --version            Muestra la versión
+Options:
+  -m, --message <text>     Transfer message
+  -o, --output <path>      Destination file or directory
+  -f, --force              Overwrite the destination file
+      --json               JSON output for scripts
+  -q, --quiet              Hide status and progress
+      --no-progress        Hide the progress bar
+      --base-url <URL>     DripFiles server (default: ${DEFAULT_BASE_URL})
+  -h, --help               Show this help
+  -v, --version            Show the version
 
-Ejemplos:
+Examples:
   dripfiles video.mp4
-  dripfiles fotos.zip notas.pdf --message "Para el equipo"
+  dripfiles photos.zip notes.pdf --message "For the team"
   dripfiles https://dripfiles.com/AbC123
-  dripfiles download AbC123 -o ./descargas/
+  dripfiles download AbC123 -o ./downloads/
   dripfiles auth login
 
-Entorno:
-  DRIPFILES_API_KEY       API key para CI o uso temporal
-  DRIPFILES_BASE_URL      Servidor DripFiles alternativo
+Environment:
+  DRIPFILES_API_KEY       API key for CI or temporary use
+  DRIPFILES_BASE_URL      Alternative DripFiles server
 
-Por seguridad, la API key no se acepta como argumento de línea de comandos.`;
+For security, API keys are not accepted as command-line arguments.`;
 
 export class CliUsageError extends Error {
   constructor(message) {
@@ -61,7 +61,7 @@ export async function run(argv, io = {}) {
   }
 
   const controller = new AbortController();
-  const onInterrupt = () => controller.abort(new Error('Operación cancelada.'));
+  const onInterrupt = () => controller.abort(new Error('Operation canceled.'));
   process.once('SIGINT', onInterrupt);
 
   try {
@@ -97,33 +97,33 @@ export async function run(argv, io = {}) {
     const progress = createProgress(stderr, { enabled: !quiet && parsed.progress });
 
     if (command === 'upload') {
-      if (!quiet) stderr.write(`Subiendo ${plural(parsed.inputs.length, 'archivo', 'archivos')}...\n`);
+      if (!quiet) stderr.write(`Uploading ${plural(parsed.inputs.length, 'file', 'files')}...\n`);
       const result = await client.upload(parsed.inputs.map((item) => resolve(cwd, item)), {
         message: parsed.message,
         signal: controller.signal,
-        onProgress: (state) => progress.update('Subiendo', state.transferred, state.total),
-        onStatus: () => progress.indeterminate('Preparando enlace'),
+        onProgress: (state) => progress.update('Uploading', state.transferred, state.total),
+        onStatus: () => progress.indeterminate('Preparing link'),
       });
       progress.stop();
       stdout.write(parsed.json ? `${JSON.stringify(result)}\n` : `${result.url}\n`);
       return result;
     }
 
-    if (!quiet) stderr.write('Descargando...\n');
+    if (!quiet) stderr.write('Downloading...\n');
     const result = await client.download(parsed.inputs[0], {
       output: parsed.output ? resolveOutput(cwd, parsed.output) : cwd,
       force: parsed.force,
       signal: controller.signal,
-      onProgress: (state) => progress.update('Descargando', state.transferred, state.total),
+      onProgress: (state) => progress.update('Downloading', state.transferred, state.total),
     });
     progress.stop();
     stdout.write(parsed.json ? `${JSON.stringify(result)}\n` : `${result.path}\n`);
     return result;
   } catch (error) {
     if (error instanceof CliUsageError) {
-      error.message = `${error.message}\nUsa "dripfiles --help" para ver ejemplos.`;
+      error.message = `${error.message}\nRun "dripfiles --help" for examples.`;
     }
-    if (error?.name === 'AbortError') throw new DripFilesError('Operación cancelada.', { cause: error });
+    if (error?.name === 'AbortError') throw new DripFilesError('Operation canceled.', { cause: error });
     throw error;
   } finally {
     process.removeListener('SIGINT', onInterrupt);
@@ -183,7 +183,7 @@ export function parseArguments(argv) {
       result.baseUrl = argument.slice('--base-url='.length);
       result.baseUrlExplicit = true;
     }
-    else if (argument.startsWith('-')) throw new CliUsageError(`Opción desconocida: ${argument}`);
+    else if (argument.startsWith('-')) throw new CliUsageError(`Unknown option: ${argument}`);
     else result.inputs.push(argument);
   }
 
@@ -193,15 +193,15 @@ export function parseArguments(argv) {
 async function resolveCommand(parsed, cwd) {
   if (parsed.command) {
     if (parsed.command === 'auth') {
-      if (parsed.inputs.length === 0) throw new CliUsageError('Falta el comando de autenticación: login, status o logout.');
+      if (parsed.inputs.length === 0) throw new CliUsageError('Missing auth command: login, status, or logout.');
       return 'auth';
     }
-    if (parsed.inputs.length === 0) throw new CliUsageError(`Falta ${parsed.command === 'upload' ? 'el archivo' : 'la URL'}.`);
+    if (parsed.inputs.length === 0) throw new CliUsageError(`Missing ${parsed.command === 'upload' ? 'file' : 'URL'}.`);
     return parsed.command;
   }
-  if (parsed.inputs.length === 0) throw new CliUsageError('Falta un archivo o una URL.');
+  if (parsed.inputs.length === 0) throw new CliUsageError('Missing a file or URL.');
   if (/^https?:\/\//i.test(parsed.inputs[0])) {
-    if (parsed.inputs.length > 1) throw new CliUsageError('Solo se puede descargar una URL cada vez.');
+    if (parsed.inputs.length > 1) throw new CliUsageError('Only one URL can be downloaded at a time.');
     return 'download';
   }
 
@@ -210,31 +210,31 @@ async function resolveCommand(parsed, cwd) {
     return 'upload';
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
-    throw new CliUsageError(`No existe el archivo: ${parsed.inputs[0]}`);
+    throw new CliUsageError(`File not found: ${parsed.inputs[0]}`);
   }
 }
 
 function validateOptions(command, parsed) {
   if (command === 'auth') {
     if (parsed.inputs.length !== 1 || !['login', 'status', 'logout'].includes(parsed.inputs[0])) {
-      throw new CliUsageError('Comando de autenticación no válido. Usa login, status o logout.');
+      throw new CliUsageError('Invalid auth command. Use login, status, or logout.');
     }
     if (parsed.output || parsed.force || parsed.message) {
-      throw new CliUsageError('Las opciones de transferencia no se pueden usar con auth.');
+      throw new CliUsageError('Transfer options cannot be used with auth.');
     }
     return;
   }
   if (command === 'download' && parsed.inputs.length !== 1) {
-    throw new CliUsageError('Solo se puede descargar un enlace cada vez.');
+    throw new CliUsageError('Only one transfer can be downloaded at a time.');
   }
-  if (command === 'upload' && parsed.output) throw new CliUsageError('--output solo se puede usar al descargar.');
-  if (command === 'upload' && parsed.force) throw new CliUsageError('--force solo se puede usar al descargar.');
-  if (command === 'download' && parsed.message) throw new CliUsageError('--message solo se puede usar al subir.');
+  if (command === 'upload' && parsed.output) throw new CliUsageError('--output can only be used when downloading.');
+  if (command === 'upload' && parsed.force) throw new CliUsageError('--force can only be used when downloading.');
+  if (command === 'download' && parsed.message) throw new CliUsageError('--message can only be used when uploading.');
 }
 
 function optionValue(argv, index, option) {
   const value = argv[index];
-  if (value === undefined || value === '') throw new CliUsageError(`Falta el valor de ${option}.`);
+  if (value === undefined || value === '') throw new CliUsageError(`Missing value for ${option}.`);
   return value;
 }
 
@@ -264,9 +264,9 @@ async function handleAuth(context) {
     };
     if (parsed.json) stdout.write(`${JSON.stringify(result)}\n`);
     else if (environmentApiKey) {
-      stdout.write('API key local eliminada. DRIPFILES_API_KEY sigue activa en el entorno.\n');
+      stdout.write('Local API key removed. DRIPFILES_API_KEY is still active in the environment.\n');
     } else {
-      stdout.write('API key eliminada.\n');
+      stdout.write('API key removed.\n');
     }
     return result;
   }
@@ -274,18 +274,18 @@ async function handleAuth(context) {
   if (action === 'login') {
     const prompt = readApiKey ?? (() => readSecret('API key: ', { stdin, stderr }));
     const key = environmentApiKey || String(await prompt()).trim();
-    if (!key) throw new CliUsageError('La API key no puede estar vacía.');
+    if (!key) throw new CliUsageError('The API key cannot be empty.');
     const client = createClient({ baseUrl, apiKey: key });
     const account = await client.me({ signal });
     const path = await saveConfig({ ...storedConfig, apiKey: key, baseUrl }, configOptions);
     const result = { authenticated: true, source: 'config', baseUrl, configPath: path, account };
     if (parsed.json) stdout.write(`${JSON.stringify(result)}\n`);
-    else stdout.write(`API key guardada. ${accountSummary(account)}\n`);
+    else stdout.write(`API key saved. ${accountSummary(account)}\n`);
     return result;
   }
 
   const key = context.apiKey;
-  if (!key) throw new DripFilesError('No hay ninguna API key configurada. Usa "dripfiles auth login".');
+  if (!key) throw new DripFilesError('No API key is configured. Run "dripfiles auth login".');
   const client = createClient({ baseUrl, apiKey: key });
   const account = await client.me({ signal });
   const result = {
@@ -295,19 +295,19 @@ async function handleAuth(context) {
     account,
   };
   if (parsed.json) stdout.write(`${JSON.stringify(result)}\n`);
-  else stdout.write(`${accountSummary(account)}\nOrigen: ${result.source === 'environment' ? 'DRIPFILES_API_KEY' : resolvedConfigPath}\n`);
+  else stdout.write(`${accountSummary(account)}\nSource: ${result.source === 'environment' ? 'DRIPFILES_API_KEY' : resolvedConfigPath}\n`);
   return result;
 }
 
 function accountSummary(account) {
-  const identity = account.email || `usuario ${account.user_id ?? 'desconocido'}`;
-  const tier = account.tier_label || account.plan_name || account.tier || 'plan desconocido';
-  return `Conectado como ${identity} · ${tier}`;
+  const identity = account.email || `user ${account.user_id ?? 'unknown'}`;
+  const tier = account.tier_label || account.plan_name || account.tier || 'unknown plan';
+  return `Connected as ${identity} · ${tier}`;
 }
 
 function readSecret(prompt, { stdin, stderr }) {
   if (!stdin.isTTY || !stderr.isTTY || typeof stdin.setRawMode !== 'function') {
-    throw new CliUsageError('El login interactivo necesita una terminal. También puedes definir DRIPFILES_API_KEY.');
+    throw new CliUsageError('Interactive login requires a terminal. You can also set DRIPFILES_API_KEY.');
   }
   stderr.write(prompt);
   const wasRaw = Boolean(stdin.isRaw);
@@ -326,7 +326,7 @@ function readSecret(prompt, { stdin, stderr }) {
     };
     const onData = (chunk) => {
       for (const character of chunk) {
-        if (character === '\u0003') return finish(new Error('Operación cancelada.'));
+        if (character === '\u0003') return finish(new Error('Operation canceled.'));
         if (character === '\r' || character === '\n') return finish();
         if (character === '\u007f' || character === '\b') {
           if (value.length > 0) {

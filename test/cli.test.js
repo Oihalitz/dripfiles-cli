@@ -6,41 +6,41 @@ import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { CliUsageError, parseArguments, run } from '../src/cli.js';
 
-test('analiza comandos y opciones cortas o largas', () => {
+test('parses commands and short or long options', () => {
   assert.deepEqual(
-    pick(parseArguments(['upload', 'uno.zip', 'dos.pdf', '-m', 'Entrega', '--json'])),
+    pick(parseArguments(['upload', 'one.zip', 'two.pdf', '-m', 'Delivery', '--json'])),
     {
       command: 'upload',
-      inputs: ['uno.zip', 'dos.pdf'],
-      message: 'Entrega',
+      inputs: ['one.zip', 'two.pdf'],
+      message: 'Delivery',
       output: null,
       force: false,
       json: true,
     },
   );
   assert.deepEqual(
-    pick(parseArguments(['download', 'AbC123', '--output=./bajada', '--force'])),
+    pick(parseArguments(['download', 'AbC123', '--output=./downloads', '--force'])),
     {
       command: 'download',
       inputs: ['AbC123'],
       message: '',
-      output: './bajada',
+      output: './downloads',
       force: true,
       json: false,
     },
   );
-  assert.throws(() => parseArguments(['--desconocida']), CliUsageError);
+  assert.throws(() => parseArguments(['--unknown']), CliUsageError);
   assert.equal(parseArguments(['help']).help, true);
 });
 
-test('sin argumentos muestra la ayuda', async () => {
+test('displays help when run without arguments', async () => {
   const stdout = captureStream();
   await run([], { stdout, stderr: captureStream() });
-  assert.match(stdout.text(), /dripfiles <archivo>/);
+  assert.match(stdout.text(), /dripfiles <file>/);
   assert.match(stdout.text(), /dripfiles auth login/);
 });
 
-test('la forma implícita sube una ruta local y deja solo la URL en stdout', async () => {
+test('the implicit form uploads a local path and writes only the URL to stdout', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'dripfiles-cli-'));
   await writeFile(join(directory, 'release.zip'), 'zip');
   const stdout = captureStream();
@@ -60,18 +60,18 @@ test('la forma implícita sube una ruta local y deja solo la URL en stdout', asy
   assert.equal(stderr.text(), '');
 });
 
-test('una URL usa descarga implícita y respeta --output', async () => {
+test('a URL triggers an implicit download and honors --output', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'dripfiles-cli-download-'));
   const stdout = captureStream();
   let received;
   const client = {
     async download(url, options) {
       received = { url, options };
-      return { url, path: join(directory, 'salida.bin'), bytes: 10, filename: 'salida.bin' };
+      return { url, path: join(directory, 'output.bin'), bytes: 10, filename: 'output.bin' };
     },
   };
 
-  await run(['https://dripfiles.com/AbC', '-o', 'salida.bin', '--json'], {
+  await run(['https://dripfiles.com/AbC', '-o', 'output.bin', '--json'], {
     client,
     cwd: directory,
     stdout,
@@ -79,36 +79,36 @@ test('una URL usa descarga implícita y respeta --output', async () => {
   });
 
   assert.equal(received.url, 'https://dripfiles.com/AbC');
-  assert.equal(received.options.output, join(directory, 'salida.bin'));
+  assert.equal(received.options.output, join(directory, 'output.bin'));
   assert.deepEqual(JSON.parse(stdout.text()), {
     url: 'https://dripfiles.com/AbC',
-    path: join(directory, 'salida.bin'),
+    path: join(directory, 'output.bin'),
     bytes: 10,
-    filename: 'salida.bin',
+    filename: 'output.bin',
   });
 });
 
-test('una ruta de salida terminada en barra conserva la intención de directorio', async () => {
+test('an output path ending in a slash preserves the directory intent', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'dripfiles-cli-directory-'));
   let output;
   const client = {
     async download(_url, options) {
       output = options.output;
-      return { url: 'https://dripfiles.com/X', path: join(directory, 'destino', 'x'), bytes: 1 };
+      return { url: 'https://dripfiles.com/X', path: join(directory, 'destination', 'x'), bytes: 1 };
     },
   };
 
-  await run(['download', 'X', '-o', 'destino/', '--quiet'], {
+  await run(['download', 'X', '-o', 'destination/', '--quiet'], {
     client,
     cwd: directory,
     stdout: captureStream(),
     stderr: captureStream(),
   });
 
-  assert.match(output, /destino[\\\/]$/);
+  assert.match(output, /destination[\\\/]$/);
 });
 
-test('auth login valida y guarda la API key; status y logout la gestionan', async () => {
+test('auth login validates and saves the API key; status and logout manage it', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'dripfiles-auth-'));
   const path = join(directory, 'config', 'config.json');
   const createdWith = [];

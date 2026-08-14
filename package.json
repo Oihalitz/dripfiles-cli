@@ -1,7 +1,7 @@
 {
   "name": "dripfiles",
   "version": "0.1.0",
-  "description": "Sube y descarga archivos de DripFiles directamente desde la terminal.",
+  "description": "Upload and download DripFiles transfers directly from your terminal.",
   "type": "module",
   "bin": {
     "dripfiles": "bin/dripfiles.js"

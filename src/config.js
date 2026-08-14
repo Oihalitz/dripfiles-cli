@@ -20,14 +20,14 @@ export async function readConfig(options = {}) {
     text = await readFile(path, 'utf8');
   } catch (error) {
     if (error?.code === 'ENOENT') return {};
-    throw new DripFilesError(`No se pudo leer la configuración de DripFiles: ${error.message}`, { cause: error });
+    throw new DripFilesError(`Could not read the DripFiles configuration: ${error.message}`, { cause: error });
   }
 
   try {
     const value = JSON.parse(text);
     return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   } catch (error) {
-    throw new DripFilesError(`La configuración de DripFiles no contiene JSON válido: ${path}`, { cause: error });
+    throw new DripFilesError(`The DripFiles configuration does not contain valid JSON: ${path}`, { cause: error });
   }
 }
 

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { clearConfig, readConfig, saveConfig } from '../src/config.js';
 
-test('guarda la configuración de forma privada y la puede eliminar', async () => {
+test('stores configuration privately and can remove it', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'dripfiles-config-'));
   const path = join(directory, 'nested', 'config.json');
   const value = { apiKey: 'df_secret', baseUrl: 'https://dripfiles.com' };

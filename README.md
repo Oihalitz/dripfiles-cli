@@ -2,58 +2,57 @@
 
 [![CI](https://github.com/Oihalitz/dripfiles-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Oihalitz/dripfiles-cli/actions/workflows/ci.yml)
 
-Sube y descarga archivos de [DripFiles](https://dripfiles.com) sin salir de la terminal. No necesitas cuenta ni API key.
+Upload and download [DripFiles](https://dripfiles.com) transfers without leaving your terminal. No account or API key is required.
 
-## Instalación
+## Installation
 
 ```bash
 npm install --global dripfiles
 dripfiles --help
 ```
 
-Después de la instalación global, el ejecutable es `dripfiles` en Windows, macOS y Linux.
-Ejecutarlo sin argumentos muestra la ayuda.
+After a global installation, the `dripfiles` command is available on Windows, macOS, and Linux. Running it without arguments displays the help page.
 
-También puedes usarlo puntualmente, sin instalación global:
+You can also run it without installing it globally:
 
 ```bash
-npx dripfiles archivo.zip
+npx dripfiles archive.zip
 ```
 
-La primera ejecución de `npx` puede pedir confirmación para descargar el paquete. En CI puedes usar `npx --yes dripfiles archivo.zip`.
+The first `npx` run may ask for confirmation before downloading the package. In CI, use `npx --yes dripfiles archive.zip`.
 
-Requiere una versión mantenida de Node.js: Node 22 o posterior.
+Requires a maintained Node.js release: Node.js 22 or later.
 
-## Uso rápido
+## Quick start
 
-La forma corta detecta automáticamente qué quieres hacer:
+The short form automatically detects what you want to do:
 
 ```bash
-# Una ruta local se sube; stdout contiene únicamente el enlace
+# A local path is uploaded; stdout contains only the share link
 dripfiles video.mp4
 # https://dripfiles.com/AbC123
 
-# Una URL se descarga en el directorio actual
+# A URL is downloaded to the current directory
 dripfiles https://dripfiles.com/AbC123
-# /ruta/actual/video.mp4
+# /current/path/video.mp4
 ```
 
-Puedes subir varios archivos en una sola transferencia:
+Upload multiple files in a single transfer:
 
 ```bash
-dripfiles fotos.zip notas.pdf --message "Para el equipo"
+dripfiles photos.zip notes.pdf --message "For the team"
 ```
 
-Y usar comandos explícitos cuando quede más claro en un script:
+Use explicit commands when they are clearer in a script:
 
 ```bash
 dripfiles upload build.tar.gz
-dripfiles download AbC123 --output ./descargas/
+dripfiles download AbC123 --output ./downloads/
 ```
 
-## Usar tu API key
+## Use your API key
 
-Conecta una cuenta de DripFiles de forma interactiva:
+Connect a DripFiles account interactively:
 
 ```bash
 dripfiles auth login
@@ -61,70 +60,69 @@ dripfiles auth status
 dripfiles auth logout
 ```
 
-La clave se valida antes de guardarse y se almacena en la carpeta de configuración del sistema con permisos restringidos. A partir del login, las subidas usan automáticamente los límites y la atribución de esa cuenta.
+The key is validated before it is saved and is stored in the operating system's configuration directory with restricted permissions. Once logged in, uploads automatically use that account's limits and attribution.
 
-Para CI o uso temporal, evita guardar la clave:
+For CI or temporary use, provide the key without saving it:
 
 ```bash
 DRIPFILES_API_KEY="df_..." dripfiles release.zip
 DRIPFILES_API_KEY="df_..." dripfiles auth status
 ```
 
-La API key no se acepta como argumento para evitar que aparezca en el historial del shell o en la lista de procesos.
+API keys are not accepted as command-line arguments so they do not appear in shell history or process listings.
 
-## Opciones
+## Options
 
 ```text
--m, --message <texto>    Mensaje de la transferencia
--o, --output <ruta>      Archivo o directorio de destino
--f, --force              Sobrescribe el archivo de destino
-    --json               Salida JSON para scripts
--q, --quiet              No muestra estado ni progreso
-    --no-progress        No muestra la barra de progreso
-    --base-url <URL>     Usa otro servidor DripFiles
--h, --help               Ayuda
--v, --version            Versión
+-m, --message <text>     Transfer message
+-o, --output <path>      Destination file or directory
+-f, --force              Overwrite the destination file
+    --json               JSON output for scripts
+-q, --quiet              Hide status and progress
+    --no-progress        Hide the progress bar
+    --base-url <URL>     Use another DripFiles server
+-h, --help               Show help
+-v, --version            Show the version
 ```
 
-También puedes usar `dripfiles help`. La variable de entorno `DRIPFILES_BASE_URL` es equivalente a `--base-url`.
+You can also use `dripfiles help`. The `DRIPFILES_BASE_URL` environment variable is equivalent to `--base-url`.
 
-## Automatización
+## Automation
 
-El progreso y los mensajes se escriben en stderr. Al subir, stdout solo contiene el enlace, así que se puede capturar directamente:
+Progress and status messages are written to stderr. During uploads, stdout contains only the share link, so it can be captured directly:
 
 ```bash
-enlace="$(dripfiles release.zip)"
-printf 'Descarga: %s\n' "$enlace"
+link="$(dripfiles release.zip)"
+printf 'Download: %s\n' "$link"
 ```
 
-Para una respuesta estructurada:
+For structured output:
 
 ```bash
 dripfiles upload release.zip --json
 dripfiles download AbC123 --json --output ./release.zip
 ```
 
-Los archivos se descargan primero con la extensión `.part` y se renombran al terminar. La CLI evita sobrescribir archivos existentes salvo que indiques `--force`.
+Downloads are first written with a `.part` extension and renamed when complete. Existing files are never overwritten unless you pass `--force`.
 
-## Límites de la API gratuita
+## Free API limits
 
-- 2 GB por archivo.
-- 10 GB por transferencia.
-- Hasta 50 archivos.
-- Los enlaces gratuitos caducan a los 2 días.
+- 2 GB per file.
+- 10 GB per transfer.
+- Up to 50 files.
+- Free links expire after 2 days.
 
-La CLI usa los chunks indicados por el servidor y reintenta fallos temporales automáticamente.
-Con una API key se aplican en su lugar los límites de la cuenta conectada.
+The CLI uses the chunk size advertised by the server and automatically retries temporary failures. When an API key is configured, the connected account's limits are used instead.
 
-## Sistemas compatibles
+## Supported systems
 
 - Windows.
-- macOS, tanto Intel como Apple Silicon.
+- macOS on Intel and Apple Silicon.
 - Linux.
 
-El paquete no ejecuta comandos específicos del sistema ni tiene dependencias nativas. Los nombres recibidos al descargar se limpian para evitar caracteres y nombres reservados incompatibles con Windows.
+The package does not execute platform-specific commands and has no native dependencies. Downloaded filenames are sanitized to avoid invalid characters and reserved names on Windows.
 
-## Desarrollo
+## Development
 
 ```bash
 npm test
@@ -132,6 +130,6 @@ npm run check
 npm pack --dry-run
 ```
 
-## Licencia
+## License
 
 MIT

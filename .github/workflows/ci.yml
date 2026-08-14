@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+        node:
+          - 22
+          - 24
+        include:
+          - os: ubuntu-latest
+            node: 26
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install package metadata
+        run: npm ci --ignore-scripts
+
+      - name: Check syntax
+        run: npm run check
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build npm tarball
+        run: npm pack
+
+      - name: Verify local npx execution
+        run: |
+          npm install --prefix .smoke .
+          npm exec --prefix .smoke -- dripfiles --version
+
+      - name: Verify global command
+        run: |
+          npm install --global .
+          dripfiles --version

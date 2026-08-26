@@ -33,9 +33,10 @@ test('uploads in chunks, completes, and waits until the share link is ready', as
       });
     }
     if (request.url === '/api/v1/free/uploads/test123/files') {
+      assert.equal(request.method, 'PUT');
       assert.equal(request.headers['x-upload-token'], 'dft_test');
-      assert.match(body.toString(), /name="file_uid"\r\n\r\nuid_test/);
-      assert.match(body.toString(), /name="original_path"\r\n\r\ndemo\.txt/);
+      assert.equal(request.headers['x-file-uid'], 'uid_test');
+      assert.equal(request.headers['x-file-name'], 'demo.txt');
       return json(response, 200, { ok: true });
     }
     if (request.url === '/api/v1/free/uploads/test123/complete') {
@@ -71,6 +72,7 @@ test('uploads in chunks, completes, and waits until the share link is ready', as
     'bytes 5-9/12',
     'bytes 10-11/12',
   ]);
+  assert.deepEqual(chunks.map((request) => request.body.toString()), ['hello', ' worl', 'd!']);
 });
 
 test('downloads a UTF-8 filename and retries older servers with a curl user agent', async (t) => {
@@ -120,25 +122,35 @@ test('validates and uses a personal API key throughout an upload', async (t) => 
   const seen = [];
   const server = createServer(async (request, response) => {
     await readBody(request);
-    seen.push({ url: request.url, authorization: request.headers.authorization });
-    assert.equal(request.headers.authorization, 'Bearer df_test_secret');
+    seen.push({
+      url: request.url,
+      authorization: request.headers.authorization,
+      uploadToken: request.headers['x-upload-token'],
+    });
 
     if (request.url === '/api/v1/me') {
+      assert.equal(request.headers.authorization, 'Bearer df_test_secret');
       return json(response, 200, { ok: true, email: 'cli@example.test', tier: 'premium' });
     }
     if (request.url === '/api/v1/uploads') {
+      assert.equal(request.headers.authorization, 'Bearer df_test_secret');
       return json(response, 201, {
         ok: true,
         tier: 'premium',
         upload_id: 'private1',
+        upload_token: 'dfu_private',
         chunk_size: 1024,
         files: [{ name: 'private.txt', size: 7, file_uid: 'uid_private' }],
       });
     }
     if (request.url === '/api/v1/uploads/private1/files') {
+      assert.equal(request.headers['x-upload-token'], 'dfu_private');
+      assert.equal(request.headers.authorization, undefined);
       return json(response, 200, { ok: true });
     }
     if (request.url === '/api/v1/uploads/private1/complete') {
+      assert.equal(request.headers['x-upload-token'], 'dfu_private');
+      assert.equal(request.headers.authorization, undefined);
       return json(response, 200, {
         ok: true,
         status: 'ready',

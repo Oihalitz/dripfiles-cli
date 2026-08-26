@@ -112,7 +112,7 @@ Downloads are first written with a `.part` extension and renamed when complete. 
 - Up to 50 files.
 - Free links expire after 2 days.
 
-The CLI uses the chunk size advertised by the server and automatically retries temporary failures. When an API key is configured, the connected account's limits are used instead.
+The CLI streams raw PUT chunks using the size advertised by the server and automatically retries temporary failures. After session creation it uses a short-lived upload token, so the API key is not revalidated for every chunk.
 
 ## Supported systems
 

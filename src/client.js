@@ -4,7 +4,6 @@ import { createRequire } from 'node:module';
 import { basename, dirname, join, resolve } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { randomBytes } from 'node:crypto';
 
 const packageMetadata = createRequire(import.meta.url)('../package.json');
 
@@ -244,10 +243,13 @@ export class DripFilesClient {
     let lastError;
 
     for (let attempt = 0; attempt < 4; attempt += 1) {
-      const multipart = createMultipartBody({ file, fileUid, start, end });
+      const contentLength = end >= start ? end - start + 1 : 0;
       const headers = {
-        'content-type': `multipart/form-data; boundary=${multipart.boundary}`,
-        'content-length': String(multipart.length),
+        'content-type': 'application/octet-stream',
+        'content-length': String(contentLength),
+        'content-disposition': `attachment; filename="${encodeURIComponent(file.name)}"`,
+        'x-file-uid': fileUid,
+        'x-file-name': encodeURIComponent(file.name),
         ...this.#authHeaders(token),
       };
       if (end >= start) {
@@ -256,9 +258,9 @@ export class DripFilesClient {
 
       try {
         const response = await this.#fetch(endpoint, {
-          method: 'POST',
+          method: 'PUT',
           headers,
-          body: multipart.stream(),
+          body: createReadStream(file.path, { start, end }),
           duplex: 'half',
           signal,
         });
@@ -329,8 +331,8 @@ export class DripFilesClient {
   }
 
   #authHeaders(uploadToken) {
-    if (this.apiKey) return { authorization: `Bearer ${this.apiKey}` };
-    return uploadToken ? { 'x-upload-token': uploadToken } : {};
+    if (uploadToken) return { 'x-upload-token': uploadToken };
+    return this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {};
   }
 }
 
@@ -353,40 +355,6 @@ async function inspectFiles(inputPaths) {
     if (info.size === 0) throw new DripFilesError(`DripFiles does not accept empty files: ${path}`);
     return { path, name: basename(path), size: info.size };
   }));
-}
-
-function createMultipartBody({ file, fileUid, start, end }) {
-  const boundary = `----dripfiles-${randomBytes(12).toString('hex')}`;
-  const filename = quoteHeaderValue(file.name);
-  const prefix = Buffer.from(
-    `--${boundary}\r\n` +
-    `Content-Disposition: form-data; name="files"; filename="${filename}"\r\n` +
-    'Content-Type: application/octet-stream\r\n\r\n',
-  );
-  const suffix = Buffer.from(
-    `\r\n--${boundary}\r\n` +
-    'Content-Disposition: form-data; name="file_uid"\r\n\r\n' +
-    `${quoteFieldValue(fileUid)}\r\n` +
-    `--${boundary}\r\n` +
-    'Content-Disposition: form-data; name="original_path"\r\n\r\n' +
-    `${quoteFieldValue(file.name)}\r\n` +
-    `--${boundary}--\r\n`,
-  );
-  const contentLength = end >= start ? end - start + 1 : 0;
-
-  return {
-    boundary,
-    length: prefix.length + contentLength + suffix.length,
-    stream() {
-      return Readable.from((async function* multipartStream() {
-        yield prefix;
-        if (contentLength > 0) {
-          for await (const chunk of createReadStream(file.path, { start, end })) yield chunk;
-        }
-        yield suffix;
-      })());
-    },
-  };
 }
 
 async function resolveDownloadTarget(output, suggestedName) {
@@ -519,14 +487,6 @@ function delay(milliseconds, signal) {
     };
     signal?.addEventListener('abort', abort, { once: true });
   });
-}
-
-function quoteHeaderValue(value) {
-  return String(value).replace(/[\r\n]/g, '').replace(/["\\]/g, '_');
-}
-
-function quoteFieldValue(value) {
-  return String(value).replace(/[\r\n]/g, '');
 }
 
 function positiveInteger(value, fallback) {
